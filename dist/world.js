@@ -13,12 +13,15 @@ export function createWorld(canvas){
  const mat=(color,metalness=0,roughness=.6)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
  const stageMat=mat('#20222a',.6,.32),dark=mat('#0e1016',.2,.5),metal=mat('#656c7c',.8,.25),neon=new THREE.MeshBasicMaterial({color:'#ff3b42'}),white=new THREE.MeshBasicMaterial({color:'#dce6ff'});
  function box(w,h,d,x,y,z,material=dark,parent=scene){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.receiveShadow=true;parent.add(m);return m;}
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(12000,450),stageMat);ground.rotation.x=-Math.PI/2;ground.position.set(4500,-.03,0);ground.receiveShadow=true;scene.add(ground);
- // Each metre of the sloped runway matches the simulation's launch profile.
- const rampGeo=new THREE.BufferGeometry();const vertices=[];const A=[-28,0,-5],B=[-28,0,5],C=[0,10.08,-5],D=[0,10.08,5],E=[0,0,-5],F=[0,0,5];for(const tri of [[A,B,C],[B,D,C],[C,D,E],[D,F,E],[A,C,E],[B,F,D]])for(const p of tri)vertices.push(...p);rampGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));rampGeo.computeVertexNormals();const ramp=new THREE.Mesh(rampGeo,stageMat);ramp.receiveShadow=true;scene.add(ramp);
- for(const z of[-5.1,5.1]){const rail=box(29.75,.12,.12,-14,5.12,z,neon);rail.rotation.z=Math.atan(.36);box(180,.03,.08,-90,.01,z,neon);}
- for(let i=0;i<8;i++){const p=-25+i*3.3;const strip=box(.16,.03,9.8,p,(p+28)*.36+.04,0,metal);strip.rotation.z=Math.atan(.36);}
- const roadGrid=new THREE.GridHelper(12000,240,0x454450,0x292c37);roadGrid.position.set(4500,.005,0);scene.add(roadGrid);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(12000,12000),stageMat);ground.rotation.x=-Math.PI/2;ground.position.set(0,-.03,0);ground.receiveShadow=true;scene.add(ground);
+ // Half-pipe: a shared flat valley and two circular, near-vertical walls.
+ const R=28,thetaMax=1.35,join=-R*Math.sin(thetaMax);
+ function makeWall(left=false){const verts=[],idx=[],path=[];for(let i=0;i<=64;i++){const t=i/64*thetaMax,x=left?-100-R*Math.sin(t):join+R*Math.sin(t),y=R*(1-Math.cos(t));verts.push(x,y,-5,x,y,5);path.push(new THREE.Vector3(x,y+.08,-5.05));if(i<64){const n=i*2;left?idx.push(n,n+2,n+1,n+1,n+2,n+3):idx.push(n,n+1,n+2,n+1,n+3,n+2);}}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();const rampMat=stageMat.clone();rampMat.side=THREE.DoubleSide;const mesh=new THREE.Mesh(g,rampMat);mesh.receiveShadow=true;mesh.castShadow=true;scene.add(mesh);
+ for(const side of[-1,1]){const curve=new THREE.CatmullRomCurve3(path.map(v=>new THREE.Vector3(v.x,v.y,side*5.05)));scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,64,.065,6,false),neon));for(let j=8;j<65;j+=8){const v=path[j];box(.17,Math.max(.2,v.y),.17,v.x,v.y/2,side*5.3,metal);}}
+ for(let j=0;j<26;j++){const t=j/26*thetaMax,x=left?-100-R*Math.sin(t):join+R*Math.sin(t),y=R*(1-Math.cos(t));const dash=box(.45,.035,.08,x,y+.025,0,white);dash.rotation.z=left?-t:t;}}
+ makeWall();makeWall(true);for(const z of[-5.05,5.05])box(100+join,.06,.09,(-100+join)/2,.04,z,neon);
+ const roadGrid=new THREE.GridHelper(12000,240,0x454450,0x292c37);roadGrid.position.set(0,.005,0);scene.add(roadGrid);
  function textTexture(text,subtitle){const c=document.createElement('canvas');c.width=1536;c.height=512;const x=c.getContext('2d');x.fillStyle='#07090e';x.fillRect(0,0,1536,512);x.textAlign='center';x.fillStyle='#f0f1f7';x.font='500 104px Arial';x.fillText(text,768,245);x.fillStyle='#ff4957';x.font='24px Arial';x.fillText(subtitle,768,320);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
  const screenTexture=textTexture('R O A D S T E R','BEYOND THE ROAD / FLIGHT EXPERIENCE');const screenMat=new THREE.MeshBasicMaterial({map:screenTexture});
  for(let i=0;i<13;i++){const x=-65+i*150;box(145,17,2,x,9,-32,dark);box(85,15,.15,x,12,-30.8,screenMat);box(145,.12,.2,x,.8,-30.5,neon);for(const dx of[-69,69]){box(.35,27,.35,x+dx,13,-28,metal);box(.3,1,.3,x+dx,26,-28,white);}box(140,.3,.4,x,26,-28,metal);}
@@ -28,7 +31,7 @@ export function createWorld(canvas){
  // Volumetric light cones, translucent to keep the runway visible.
  const beamMat=new THREE.MeshBasicMaterial({color:0x9eb9ff,transparent:true,opacity:.045,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
  for(let i=0;i<18;i++){const beam=new THREE.Mesh(new THREE.ConeGeometry(6,26,12,1,true),beamMat);beam.position.set(-80+i*110,13,-12);scene.add(beam);}
- const carPivot=new THREE.Group();scene.add(carPivot);const modelRoot=new THREE.Group();carPivot.add(modelRoot);
+ const carPivot=new THREE.Group();scene.add(carPivot);const modelRoot=new THREE.Group();carPivot.add(modelRoot);modelRoot.position.y=-.7;
  // Reconstructed 2026 launch silhouette: silver wedge, wraparound glass, flat light bars.
  const paint=new THREE.MeshPhysicalMaterial({color:0xbfc4cd,metalness:.82,roughness:.26,clearcoat:1,clearcoatRoughness:.15});
  const glass=new THREE.MeshPhysicalMaterial({color:0x101a24,metalness:.3,roughness:.13,clearcoat:1});const rubber=mat('#0b0c10',.05,.9),rimMat=mat('#9ca4b0',.9,.22),carbon=mat('#10141b',.5,.4);
@@ -50,17 +53,17 @@ export function createWorld(canvas){
  const puffGeo=new THREE.BufferGeometry();puffGeo.setAttribute('position',new THREE.BufferAttribute(positions,3));puffGeo.setAttribute('color',new THREE.BufferAttribute(colors,3));const puffMat=new THREE.PointsMaterial({map:puffTex,color:0xe8f6ff,size:1.8,transparent:true,opacity:.85,depthWrite:false,vertexColors:true,sizeAttenuation:true});const puffs=new THREE.Points(puffGeo,puffMat);puffs.frustumCulled=false;scene.add(puffs);
  function emit(origin,direction,velocity=null){const q=particles[cursor++%N];q.p.copy(origin);q.v.copy(direction).multiplyScalar(10+Math.random()*8).add(new THREE.Vector3((Math.random()-.5)*2,(Math.random()-.5)*2,(Math.random()-.5)*2));if(velocity)q.v.add(velocity);q.life=q.max=.5+Math.random()*.65;}
  let prevTime=performance.now(),previousState='ready';const jetAxis=new THREE.Vector3(0,0,1),quat=new THREE.Quaternion();
- let width=900,height=490;const loaded=true,loadError=false;document.getElementById('modelStatus').textContent='3D 已就绪 · 2026 外观参考重建';document.getElementById('startButton').disabled=false;
+ let overview=false;let width=900,height=490;const loaded=true,loadError=false;document.getElementById('modelStatus').textContent='3D 已就绪 · 2026 外观参考重建';document.getElementById('startButton').disabled=false;
  const target=new THREE.Vector3(),desired=new THREE.Vector3();let first=true;
- return {get ready(){return loaded&&!loadError;},resize(w,h){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();},update(f,state,boost,paused,time){
- const ready=state==='ready',end=state==='end';carPivot.position.set(f.x,Math.max(.02,f.y-1.05),0);carPivot.rotation.z=ready?0:f.a;
+ return {toggleView(){overview=!overview;return overview;},get ready(){return loaded&&!loadError;},resize(w,h){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();},update(f,state,boost,paused,time){
+ const ready=state==='ready',end=state==='end';carPivot.position.set(f.x,Math.max(.02,f.y-1.05)+.7,f.z||0);carPivot.quaternion.set(f.q.x,f.q.y,f.q.z,f.q.w);
  const close=ready||end;const mobile=width<600;const offset=close?new THREE.Vector3(7,3.7,8):new THREE.Vector3(mobile?-7:-9,5,mobile?14:16);
- desired.copy(carPivot.position).add(offset);if(first){camera.position.copy(desired);first=false;}else camera.position.lerp(desired,close?.045:.09);
- target.copy(carPivot.position).add(new THREE.Vector3(close?0:2,close?.6:1,0));camera.lookAt(target);
- key.position.copy(carPivot.position).add(new THREE.Vector3(-15,45,25));key.target.position.copy(carPivot.position);red.position.set(f.x-8,f.y+5,-12);
- const now=performance.now(),dt=paused?0:Math.min(.05,(now-prevTime)/1000);prevTime=now;quat.setFromAxisAngle(jetAxis,ready?0:f.a);
- if(boost&&dt>0){for(const nozzle of nozzles){const origin=nozzle.p.clone().applyQuaternion(quat).add(carPivot.position),direction=nozzle.d.clone().applyQuaternion(quat);for(let j=0;j<3;j++)emit(origin,direction,new THREE.Vector3(f.vx,f.vy,0));}}
- if(state==='end'&&previousState!=='end'){for(let j=0;j<70;j++)emit(new THREE.Vector3(f.x+(Math.random()-.5)*4,.1,(Math.random()-.5)*2),new THREE.Vector3((Math.random()-.5),.1,(Math.random()-.5)));}previousState=state;
+ if(state==='run')offset.set(8,16,mobile?38:32);desired.copy(carPivot.position).add(offset);if(overview)desired.set(-60,48,mobile?205:155);if(first){camera.position.copy(desired);first=false;}else camera.position.lerp(desired,close?.045:.09);
+ target.copy(carPivot.position).add(new THREE.Vector3(close?0:2,close?.6:1,0));if(overview)target.set(-60,10,0);camera.lookAt(target);
+ key.position.copy(carPivot.position).add(new THREE.Vector3(-15,45,25));key.target.position.copy(carPivot.position);red.position.set(f.x-8,f.y+5,(f.z||0)-12);
+ const now=performance.now(),dt=paused?0:Math.min(.05,(now-prevTime)/1000);prevTime=now;quat.copy(carPivot.quaternion);
+ if(boost&&dt>0){for(const nozzle of nozzles){const origin=nozzle.p.clone().add(new THREE.Vector3(0,-.7,0)).applyQuaternion(quat).add(carPivot.position),direction=nozzle.d.clone().applyQuaternion(quat);for(let j=0;j<3;j++)emit(origin,direction,new THREE.Vector3(f.vx,f.vy,f.vz||0));}}
+ if(state==='end'&&previousState!=='end'){for(let j=0;j<70;j++)emit(new THREE.Vector3(f.x+(Math.random()-.5)*4,.1,(f.z||0)+(Math.random()-.5)*2),new THREE.Vector3((Math.random()-.5),.1,(Math.random()-.5)));}previousState=state;
  for(let i=0;i<N;i++){const q=particles[i];if(q.life>0){q.life-=dt;q.p.addScaledVector(q.v,dt);q.v.multiplyScalar(1-dt*.6);if(q.p.y<.1){q.p.y=.1;q.v.y=Math.abs(q.v.y)*.12;q.v.x*=1.02;q.v.z*=1.02;}positions[i*3]=q.p.x;positions[i*3+1]=q.p.y;positions[i*3+2]=q.p.z;const c=Math.max(0,q.life/q.max);colors[i*3]=c;colors[i*3+1]=c;colors[i*3+2]=c;}else positions[i*3+1]=1e6;}puffGeo.attributes.position.needsUpdate=true;puffGeo.attributes.color.needsUpdate=true;
  if(!paused&&state==='run')for(const wheel of wheels)wheel.rotation.z-=f.vx*dt/.425;
  renderer.render(scene,camera);
