@@ -8,6 +8,13 @@
 - 全球排行榜使用 Cloudflare D1；服务器重放固定步长物理模拟，计算实际成绩。
 - 高空摄像机使用渲染插值与随帧率调整的过渡，地面使用 mipmap 纹理防止网格闪烁。
 
+## 在线试玩
+
+- [GitHub Pages](https://cvandia.github.io/roadster-flight/)
+- [游戏与全球排行榜服务](https://roadster-flight-cj.arcane-krill-2332.chatgpt.site/)
+
+GitHub Pages 发布根目录 `index.html` 的全屏游戏入口；游戏和全球排行榜继续使用已部署的 Cloudflare Worker / D1 服务。Pages 不运行服务端数据库代码。完整前端源码在 `public/play/`，服务端源码在 `app/api/`。
+
 ## 开发
 
 依赖安装、构建、发布遵循 Sites 插件工作流。主要文件：
