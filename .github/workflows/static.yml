@@ -36,7 +36,9 @@ jobs:
         with:
           node-version: 22
       - name: Verify offline play support
-        run: node tests/connectivity.test.mjs
+        run: |
+          node tests/connectivity.test.mjs
+          node tests/landing.test.mjs
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Prepare game entry

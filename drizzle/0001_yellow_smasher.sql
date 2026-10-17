@@ -1,0 +1,1 @@
+ALTER TABLE `flight_scores` ADD `ruleset` text;

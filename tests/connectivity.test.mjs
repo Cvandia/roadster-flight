@@ -16,3 +16,8 @@ const retryStorageData=new Map(),retryStorage={getItem:k=>retryStorageData.get(k
 const retryAPI=async(path,body)=>{if(path==='/api/runs'){tokenCalls++;return {runId:'persistent-token'};}attempts++;assert.equal(body.runId,'persistent-token');if(loseResponse){loseResponse=false;throw new Error('Lost response');}return {score:{distance:42.3}};};
 let retryQueue=createScoreQueue({storage:retryStorage,api:retryAPI});retryQueue.add({id:'retry-flight',payload:{...record.payload,runId:undefined}});await retryQueue.flush();assert.equal(retryQueue.length,1);retryQueue=createScoreQueue({storage:retryStorage,api:retryAPI});await retryQueue.flush();assert.equal(tokenCalls,1);assert.equal(attempts,2);assert.equal(retryQueue.length,0);
 console.log('Passed: persisted run token reused after an interrupted submission.');
+
+let rejections=0;const invalidStorageData=new Map(),invalidStorage={getItem:k=>invalidStorageData.get(k)||null,setItem:(k,v)=>invalidStorageData.set(k,v)};
+const invalidAPI=async(path)=>{if(path==='/api/runs')return {runId:'invalid-token'};const error=new Error('未正向着陆');error.status=422;error.code='INVALID_LANDING';throw error;};
+const invalidQueue=createScoreQueue({storage:invalidStorage,api:invalidAPI,onRejected:()=>rejections++});invalidQueue.add({id:'invalid-flight',payload:{...record.payload,runId:undefined}});await invalidQueue.flush();assert.equal(invalidQueue.length,0);assert.equal(rejections,1);assert.deepEqual(JSON.parse(invalidStorageData.get('roadster-pending-replays-v1')),[]);
+console.log('Passed: invalid landings do not remain in the upload retry queue.');
