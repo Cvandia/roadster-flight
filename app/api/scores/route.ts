@@ -1,10 +1,12 @@
 import {env} from 'cloudflare:workers';
+import {json as responseJSON,preflight} from '../http';
 // Browser and server use the identical fixed-step simulation.
 // @ts-ignore Shared plain JavaScript game module.
 import {createFlight,simulate,VERSION} from '../../../public/play/physics.js';
 export const dynamic='force-dynamic';
-const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
-export async function GET(){
+export const OPTIONS=preflight;
+export async function GET(request:Request){
+ const json=(body:unknown,status=200)=>responseJSON(request,body,status);
  try{
   if(!env.DB)return json({error:'全球排行榜暂不可用'},503);
   const result=await env.DB.prepare(`SELECT name,distance,dx,dz,created_at FROM (SELECT name,distance,dx,dz,created_at,ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY distance DESC,created_at ASC) AS rn FROM flight_scores) WHERE rn=1 ORDER BY distance DESC,created_at ASC LIMIT 50`).all();
@@ -12,6 +14,7 @@ export async function GET(){
  }catch{return json({error:'全球排行榜暂不可用'},503);}
 }
 export async function POST(request:Request){
+ const json=(body:unknown,status=200)=>responseJSON(request,body,status);
  try{
   if(!env.DB)return json({error:'全球排行榜暂不可用'},503);
   const raw=await request.text();if(raw.length>160000)return json({error:'请求过大'},413);

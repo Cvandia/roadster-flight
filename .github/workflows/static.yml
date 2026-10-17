@@ -31,16 +31,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify offline play support
+        run: node tests/connectivity.test.mjs
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Prepare game entry
         run: |
           mkdir -p _pages
-          cp index.html _pages/index.html
+          cp -R public/play/. _pages/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Publish only the game entry; server code remains in the repository.
+          # Publish the complete self-contained game, including local Three.js and audio.
           path: '_pages'
       - name: Deploy to GitHub Pages
         id: deployment

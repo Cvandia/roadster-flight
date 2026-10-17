@@ -13,7 +13,9 @@
 - [GitHub Pages](https://cvandia.github.io/roadster-flight/)
 - [游戏与全球排行榜服务](https://roadster-flight-cj.arcane-krill-2332.chatgpt.site/)
 
-GitHub Pages 发布根目录 `index.html` 的全屏游戏入口；游戏和全球排行榜继续使用已部署的 Cloudflare Worker / D1 服务。Pages 不运行服务端数据库代码。完整前端源码在 `public/play/`，服务端源码在 `app/api/`。
+GitHub Pages 直接发布 `public/play/` 的完整游戏文件，模型、Three.js、音效及物理均从 Pages 同域加载，不再嵌入外部游戏页面，也不依赖外部 CDN。排行榜是独立的可选联网功能，通过允许该 Pages 来源的 CORS 接口访问现有 Worker / D1 服务。
+
+排行榜服务被网络阻断时，仍可立即起飞和完整游戏；落地操控记录保存在本机，刷新后仍会保留，并在连接恢复后自动重试服务器核验和上传。缓存的全球榜会标注为缓存，不会把本机记录冒充全球排名。若需要全球榜在特定网络始终可同步，仍需将 API 部署到该网络可达的服务商或自定义域名。
 
 ## 开发
 

@@ -1,0 +1,4 @@
+const origins=new Set(['https://cvandia.github.io','https://roadster-flight-cj.arcane-krill-2332.chatgpt.site','http://127.0.0.1:8765','http://localhost:8765']);
+function headers(request:Request){const origin=request.headers.get('origin')||'';return {'Cache-Control':'no-store','Vary':'Origin',...(origins.has(origin)?{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'3600'}:{})};}
+export function json(request:Request,body:unknown,status=200){return Response.json(body,{status,headers:headers(request)});}
+export function preflight(request:Request){if(!origins.has(request.headers.get('origin')||''))return new Response(null,{status:403});return new Response(null,{status:204,headers:headers(request)});}
